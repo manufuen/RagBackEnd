@@ -1,13 +1,7 @@
-import os
 from typing import Any
 
-from dotenv import load_dotenv
-from openai import OpenAI
-
 from search import hybrid_search
-
-
-load_dotenv()
+from llm_wrapper import CustomLLMWrapper
 
 
 def build_context(results: list[dict[str, Any]]) -> str:
@@ -25,15 +19,11 @@ def build_context(results: list[dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(context_parts)
 
 
-def generate_answer_with_openai(question: str, context: str) -> str:
-    api_key = os.getenv("OPENAI_API_KEY")
+def generate_answer_with_custom_llm(question: str, context: str) -> str:
+    llm = CustomLLMWrapper()
 
-    if not api_key:
+    if not llm.is_configured():
         return ""
-
-    client = OpenAI(api_key=api_key)
-
-    model = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 
     system_prompt = """
 Eres un asistente RAG.
@@ -55,36 +45,31 @@ Contexto:
 Respuesta:
 """
 
-    response = client.chat.completions.create(
-        model=model,
-        temperature=0.1,
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": user_prompt
-            }
-        ]
-    )
+    messages = [
+        {
+            "role": "system",
+            "content": system_prompt,
+        },
+        {
+            "role": "user",
+            "content": user_prompt,
+        },
+    ]
 
-    return response.choices[0].message.content
+    return llm.chat(
+        messages=messages,
+        temperature=0.0,
+    )
 
 
 def generate_fallback_answer(results: list[dict[str, Any]]) -> str:
-    """
-    Respuesta sin LLM.
-    Sirve para que el proyecto funcione aunque no tengas OPENAI_API_KEY.
-    """
     if not results:
         return "No hay información en los documentos ingestados."
 
     lines = [
         "He encontrado información relacionada en los documentos ingestados.",
         "",
-        "Fragmentos más relevantes:"
+        "Fragmentos más relevantes:",
     ]
 
     for i, result in enumerate(results[:3], start=1):
@@ -100,7 +85,7 @@ def generate_fallback_answer(results: list[dict[str, Any]]) -> str:
 
     lines.append("")
     lines.append(
-        "Nota: no hay OPENAI_API_KEY configurada, así que todavía no se ha generado una respuesta con LLM."
+        "Nota: no hay LLM configurado correctamente, así que todavía no se ha generado una respuesta final con modelo."
     )
 
     return "\n".join(lines)
@@ -122,7 +107,7 @@ def answer_question(question: str) -> dict[str, Any]:
     results = search_response["results"]
     context = build_context(results)
 
-    answer = generate_answer_with_openai(question, context)
+    answer = generate_answer_with_custom_llm(question, context)
 
     if not answer:
         answer = generate_fallback_answer(results)
