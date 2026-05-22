@@ -7,8 +7,7 @@ UNKNOWN_TOPIC = "desconocida"
 
 TOPIC_KEYWORDS = {
     "astronomia_universo": [
-        "universo", "cosmos", "big bang", "galaxia", "galaxias", "via lactea",
-        "estrella", "estrellas", "planeta", "planetas", "sistema solar",
+        "universo", "cosmos", "big bang", "galaxia", "galaxias", "via lactea","universo", "big bang", "energia", "particulas fundamentales", "quarks", "electrones", "neutrinos", "hidrogeno", "helio", "supernovas","estrella", "estrellas", "planeta", "planetas", "sistema solar",
         "agujero negro", "agujeros negros", "nebulosa", "supernova", "pulsar",
         "quasar", "astro", "astronomia", "cosmologia", "espacio", "espacial",
         "tiempo", "espaciotiempo", "telescopio", "observatorio", "satelite",
@@ -57,6 +56,8 @@ TOPIC_KEYWORDS = {
     "biologia": [
         "biologia", "biologico", "celula", "celulas", "adn", "arn", "gen",
         "genes", "genetica", "cromosoma", "proteina", "proteinas", "enzima",
+        "biologia", "bioetica", "ingenieria genetica", "genoma humano", "clonacion", 
+        "terapia genica", "adn", "biologia molecular", "celulas",
         "enzimas", "organismo", "organismos", "tejido", "tejidos", "organo",
         "organos", "sistema nervioso", "sistema inmune", "evolucion",
         "seleccion natural", "ecosistema", "biodiversidad", "especie",
@@ -144,8 +145,9 @@ TOPIC_KEYWORDS = {
     ],
 
     "ciberseguridad": [
-        "ciberseguridad", "seguridad informatica", "vulnerabilidad",
-        "vulnerabilidades", "malware", "ransomware", "phishing", "firewall",
+        "ciberseguridad", "seguridad informatica", "vulnerabilidad", "tic", "big data", 
+        "cloud computing", "iot", "industria 4.0", "activos", "riesgos", "confidencialidad", 
+        "ciberdelincuencia","vulnerabilidades", "malware", "ransomware", "phishing", "firewall",
         "cifrado", "encriptacion", "ataque", "ataques", "amenaza",
         "amenazas", "riesgo", "exploit", "brecha", "intrusion",
         "autenticacion", "autorizacion", "password", "contraseña",

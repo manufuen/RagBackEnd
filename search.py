@@ -429,6 +429,57 @@ def select_best_document(index_name: str, question: str) -> dict[str, Any] | Non
     return ranked_documents[0]
 
 
+UNKNOWN_TOPIC = "desconocida"
+
+
+def get_existing_rag_indices() -> list[str]:
+    """
+    Devuelve solo los índices RAG que existen actualmente en Elasticsearch.
+    Ejemplo:
+    ["rag_biologia", "rag_quimica", "rag_astronomia_universo"]
+    """
+    try:
+        indices = es.indices.get_alias(index="rag_*")
+        return list(indices.keys())
+    except Exception:
+        return []
+
+
+def resolve_search_index_from_question(question: str) -> tuple[str, str | None, bool, str]:
+    """
+    Clasifica la pregunta y comprueba si el índice correspondiente existe.
+
+    Devuelve:
+    tema_detectado, index_name, can_search, reason
+    """
+    detected_topic = classify_question(question)
+    detected_index = topic_to_index_name(detected_topic)
+
+    existing_indices = get_existing_rag_indices()
+
+    if not existing_indices:
+        return (
+            UNKNOWN_TOPIC,
+            None,
+            False,
+            "No hay ningún índice RAG ingestados todavía."
+        )
+
+    if detected_index not in existing_indices:
+        return (
+            UNKNOWN_TOPIC,
+            None,
+            False,
+            f"La temática detectada '{detected_topic}' no coincide con ningún índice ingestados."
+        )
+
+    return (
+        detected_topic,
+        detected_index,
+        True,
+        "Índice detectado correctamente."
+    )
+
 def hybrid_search(
     question: str,
     top_k: int = 20,
@@ -436,24 +487,16 @@ def hybrid_search(
     bm25_weight: float = 0.45,
 ) -> dict[str, Any]:
     
-    tema = classify_question(question)
-    # LO SIGUIENTE ES PARA FORZAR LA TEMATICA A ASTRONOMIA 
+    tema, index_name, can_search, reason = resolve_search_index_from_question(question)
 
-    #ndex_name = "rag_astronomia_universo"
-    index_name = "rag_biologia"
-    #index_name = topic_to_index_name(tema)
-  
-    # EL QUE ESTA COMENTADO ES EL GENERICO
-
-
-    if not es.indices.exists(index=index_name):
+    if not can_search or not index_name:
         return {
             "tema": tema,
             "index_name": index_name,
             "selected_document": None,
             "results": [],
             "found": False,
-            "reason": "No existe índice para la temática detectada."
+            "reason": reason,
         }
 
     selected_document = select_best_document(
