@@ -34,8 +34,7 @@ async def process_document(file: UploadFile):
     if not text or not text.strip():
         raise ValueError("No se pudo extraer texto del documento.")
 
-    tema = classify_document(text)
-
+    tema = classify_document(text, original_filename)
     chunks = chunk_text(text)
 
     if not chunks:

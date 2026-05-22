@@ -3,9 +3,17 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 def chunk_text(text: str) -> list[str]:
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000,
-        chunk_overlap=150,
-        separators=["\n\n", "\n", ".", " ", ""],
+        chunk_size=800,     # Tamaño máximo de cada chunk
+        chunk_overlap=120,  # Solapamiento entre chunks para mantener contexto
+        separators=[
+            "\n\n",
+            "\n",
+            ". ",
+            "; ",
+            ", ",
+            " ",
+            ""
+        ],
     )
 
     chunks = splitter.split_text(text)

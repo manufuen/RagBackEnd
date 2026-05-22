@@ -102,6 +102,7 @@ def answer_question(question: str) -> dict[str, Any]:
             "found": False,
             "reason": search_response["reason"],
             "sources": search_response["results"],
+            "selected_document": search_response.get("selected_document"),
         }
 
     results = search_response["results"]
@@ -119,4 +120,5 @@ def answer_question(question: str) -> dict[str, Any]:
         "found": True,
         "reason": search_response["reason"],
         "sources": results,
+        "selected_document": search_response.get("selected_document"),
     }
