@@ -306,9 +306,12 @@ def hit_to_result(hit: dict[str, Any]) -> dict[str, Any]:
         "fecha_ingesta": source.get("fecha_ingesta"),
         "autor": source.get("autor"),
         "keywords": source.get("keywords", []),
-        "bm25_score": 0.0,
+
+        # Estos chunks se añaden manualmente porque suelen contener definiciones.
+        # Les damos una puntuación suficiente para no ser rechazados por el umbral.
+        "bm25_score": 1.0,
         "vector_score": 0.0,
-        "score": 0.40,
+        "score": 0.95,
     }
 
 
@@ -435,8 +438,9 @@ def hybrid_search(
     
     tema = classify_question(question)
     # LO SIGUIENTE ES PARA FORZAR LA TEMATICA A ASTRONOMIA 
-    
-    index_name = "rag_astronomia_universo"
+
+    #ndex_name = "rag_astronomia_universo"
+    index_name = "rag_biologia"
     #index_name = topic_to_index_name(tema)
   
     # EL QUE ESTA COMENTADO ES EL GENERICO
@@ -515,7 +519,7 @@ def hybrid_search(
             "reason": "No se encontraron resultados dentro del documento seleccionado."
         }
 
-    top_score = results[0]["score"]
+    top_score = max(result.get("score", 0.0) for result in results)
 
     if top_score < MIN_RELEVANCE_SCORE:
         return {
