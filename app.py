@@ -60,10 +60,19 @@ def list_indices():
 async def upload_document(file: UploadFile = File(...)):
     try:
         result = await process_document(file)
+
+        if result.get("already_ingested"):
+            return {
+                "status": "duplicated",
+                "message": "documento ya ingestado",
+                "details": result
+            }
+
         return {
             "status": "ok",
             "details": result
         }
+
     except Exception as e:
         raise HTTPException(
             status_code=500,

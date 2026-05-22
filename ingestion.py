@@ -1,4 +1,5 @@
 import uuid
+import hashlib
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -6,7 +7,7 @@ from fastapi import UploadFile
 
 from classification import classify_document
 from chunking import chunk_text
-from vector_store import store_chunks
+from vector_store import store_chunks, find_document_by_hash
 from utils import extract_text, extract_author, extract_keywords
 
 
@@ -14,6 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+def calculate_file_hash(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()
 
 async def process_document(file: UploadFile):
     document_id = str(uuid.uuid4())
@@ -22,7 +25,22 @@ async def process_document(file: UploadFile):
     file_path = UPLOAD_DIR / f"{document_id}_{original_filename}"
 
     content = await file.read()
+    file_hash = calculate_file_hash(content)
+    file_size = len(content)
 
+    existing_document = find_document_by_hash(file_hash)
+
+    if existing_document:
+        return {
+            "already_ingested": True,
+            "message": "documento ya ingestado",
+            "documento_id": existing_document.get("documento_id"),
+            "nombre_documento": existing_document.get("nombre_documento"),
+            "tema": existing_document.get("tema"),
+            "fecha_ingesta": existing_document.get("fecha_ingesta"),
+            "file_hash": file_hash,
+        }
+    
     if not content:
         raise ValueError("El archivo está vacío.")
 
@@ -53,6 +71,8 @@ async def process_document(file: UploadFile):
         fecha_ingesta=fecha_ingesta,
         author=author,
         keywords=keywords,
+        file_hash=file_hash,
+        file_size=file_size,
     )
 
     return {
@@ -64,4 +84,7 @@ async def process_document(file: UploadFile):
         "keywords": keywords,
         "autor": author,
         "fecha_ingesta": fecha_ingesta,
+        "already_ingested": False,
+        "file_hash": file_hash,
+        "file_size": file_size,
     }

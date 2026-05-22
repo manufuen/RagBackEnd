@@ -109,12 +109,19 @@ def create_index_if_not_exists(index_name: str):
                 "autor": {
                     "type": "keyword"
                 },
+                "file_hash": {
+                    "type": "keyword"
+                },
+                "file_size": {
+                    "type": "long"
+                },
                 "keywords": {
                     "type": "keyword"
                 },
                 "resumen_chunk": {
                     "type": "text"
                 }
+                
             }
         }
     }
@@ -131,6 +138,40 @@ def create_chunk_summary(chunk: str, max_chars: int = 300) -> str:
     return chunk[:max_chars].rsplit(" ", 1)[0] + "..."
 
 
+def find_document_by_hash(file_hash: str) -> dict | None:
+    """
+    Busca si ya existe un documento con el mismo hash en cualquier índice rag_*.
+    """
+    try:
+        response = es.search(
+            index="rag_*",
+            body={
+                "size": 1,
+                "query": {
+                    "term": {
+                        "file_hash": file_hash
+                    }
+                },
+                "_source": [
+                    "documento_id",
+                    "nombre_documento",
+                    "tema",
+                    "fecha_ingesta",
+                    "file_hash"
+                ]
+            },
+            ignore_unavailable=True,
+        )
+
+        hits = response.get("hits", {}).get("hits", [])
+
+        if not hits:
+            return None
+
+        return hits[0].get("_source", {})
+
+    except Exception:
+        return None
 def store_chunks(
     chunks: list[str],
     tema: str,
@@ -139,6 +180,8 @@ def store_chunks(
     fecha_ingesta: str,
     author: str | None = None,
     keywords: list[str] | None = None,
+    file_hash: str | None = None,
+    file_size: int | None = None,
 ) -> dict[str, Any]:
     index_name = topic_to_index_name(tema)
     create_index_if_not_exists(index_name)
@@ -160,6 +203,8 @@ def store_chunks(
             "tema": tema,
             "documento_id": document_id,
             "nombre_documento": filename,
+            "file_hash": file_hash,
+            "file_size": file_size,
             "chunk_id": i,
             "fecha_ingesta": fecha_ingesta,
             "autor": author,
