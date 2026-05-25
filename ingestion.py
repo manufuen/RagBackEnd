@@ -10,7 +10,7 @@ from chunking import chunk_text
 from vector_store import store_chunks, find_document_by_hash
 from utils import extract_text, extract_author, extract_keywords
 
-
+# Configuración de directorios para almacenamiento temporal de archivos subidos
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -19,6 +19,9 @@ def calculate_file_hash(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 async def process_document(file: UploadFile):
+    """
+    Proceso principal para ingestar un documento:
+    """
     document_id = str(uuid.uuid4())
 
     original_filename = file.filename or "documento_sin_nombre"
