@@ -2,13 +2,11 @@ import json
 import os
 import re
 
-import classification
+from topics import TOPIC_CATALOG, UNKNOWN_TOPIC
 from llm_wrapper import CustomLLMWrapper
 
 
-UNKNOWN_TOPIC = getattr(classification, "UNKNOWN_TOPIC", "desconocida")
-TOPIC_KEYWORDS = getattr(classification, "TOPIC_KEYWORDS", {})
-classify_question = classification.classify_question
+
 
 USE_LLM_TOPIC_ROUTER = os.getenv("USE_LLM_TOPIC_ROUTER", "true").lower() == "true"
 TOPIC_ROUTER_MIN_CONFIDENCE = float(os.getenv("TOPIC_ROUTER_MIN_CONFIDENCE", "0.55"))
@@ -42,6 +40,7 @@ def extract_json_from_text(text: str) -> dict | None:
         return None
 
 
+
 def build_candidate_topics(existing_indices: list[str]) -> tuple[list[str], str]:
     topics = [
         index_to_topic(index_name)
@@ -52,16 +51,14 @@ def build_candidate_topics(existing_indices: list[str]) -> tuple[list[str], str]
     lines = []
 
     for topic in topics:
-        keywords = TOPIC_KEYWORDS.get(topic, [])
-        keywords_preview = ", ".join(keywords[:20])
+        description = TOPIC_CATALOG.get(topic, "")
 
-        if keywords_preview:
-            lines.append(f"- {topic}: {keywords_preview}")
+        if description:
+            lines.append(f"- {topic}: {description}")
         else:
             lines.append(f"- {topic}")
 
     return topics, "\n".join(lines)
-
 
 def route_question_to_existing_topic(
     question: str,
@@ -186,24 +183,9 @@ Recuerda:
 
 
 def route_with_keyword_fallback(question: str, available_topics: list[str]) -> dict:
-    """
-    Fallback por keywords si el LLM no está disponible.
-    Solo acepta temáticas que tengan índice ya ingestados.
-    """
-
-    detected_topic = classify_question(question)
-
-    if detected_topic in available_topics:
-        return {
-            "topic": detected_topic,
-            "confidence": 0.50,
-            "method": "keyword_fallback",
-            "reason": f"Clasificado por keywords como {detected_topic}."
-        }
-
     return {
         "topic": UNKNOWN_TOPIC,
         "confidence": 0.0,
-        "method": "keyword_fallback",
-        "reason": f"La temática detectada '{detected_topic}' no tiene índice ingestados."
+        "method": "no_llm_fallback",
+        "reason": "No se pudo usar el LLM para enrutar la pregunta."
     }
