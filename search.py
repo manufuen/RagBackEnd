@@ -1,5 +1,6 @@
 import os
 from typing import Any
+from topic_router import route_question_to_existing_topic, UNKNOWN_TOPIC, topic_to_index
 
 from classification import classify_question
 from vector_store import es, model, topic_to_index_name
@@ -447,13 +448,9 @@ def get_existing_rag_indices() -> list[str]:
 
 def resolve_search_index_from_question(question: str) -> tuple[str, str | None, bool, str]:
     """
-    Clasifica la pregunta y comprueba si el índice correspondiente existe.
-
-    Devuelve:
-    tema_detectado, index_name, can_search, reason
+    Usa el LLM para elegir la temática más adecuada entre los índices ya ingestados.
+    Si ninguna temática encaja, devuelve desconocida.
     """
-    detected_topic = classify_question(question)
-    detected_index = topic_to_index_name(detected_topic)
 
     existing_indices = get_existing_rag_indices()
 
@@ -465,19 +462,42 @@ def resolve_search_index_from_question(question: str) -> tuple[str, str | None, 
             "No hay ningún índice RAG ingestados todavía."
         )
 
-    if detected_index not in existing_indices:
+    routing = route_question_to_existing_topic(
+        question=question,
+        existing_indices=existing_indices,
+    )
+
+    topic = routing.get("topic", UNKNOWN_TOPIC)
+
+    if topic == UNKNOWN_TOPIC:
         return (
             UNKNOWN_TOPIC,
             None,
             False,
-            f"La temática detectada '{detected_topic}' no coincide con ningún índice ingestados."
+            routing.get("reason", "No se encontró una temática adecuada.")
         )
 
+    index_name = topic_to_index(topic)
+
+    if index_name not in existing_indices:
+        return (
+            UNKNOWN_TOPIC,
+            None,
+            False,
+            f"La temática '{topic}' no corresponde a ningún índice ingestados."
+        )
+
+    reason = (
+        f"Índice seleccionado por {routing.get('method')}: {index_name}. "
+        f"Confianza: {routing.get('confidence', 0):.2f}. "
+        f"{routing.get('reason', '')}"
+    )
+
     return (
-        detected_topic,
-        detected_index,
+        topic,
+        index_name,
         True,
-        "Índice detectado correctamente."
+        reason,
     )
 
 def hybrid_search(
