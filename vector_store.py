@@ -1,11 +1,11 @@
-import os
-import re
-import unicodedata
-from typing import Any
+import os # Para manejar variables de entorno
+import re # Para procesar texto y extraer JSON
+import unicodedata # Para normalizar texto y crear nombres de índices seguros  
+from typing import Any 
 
 from dotenv import load_dotenv
-from elasticsearch import Elasticsearch, helpers
-from sentence_transformers import SentenceTransformer
+from elasticsearch import Elasticsearch, helpers # Para interactuar con Elasticsearch y hacer operaciones bulk
+from sentence_transformers import SentenceTransformer # Para generar embeddings de los chunks de texto
 
 
 load_dotenv()
@@ -25,6 +25,7 @@ model = SentenceTransformer(EMBEDDING_MODEL)
 
 
 def get_es_client() -> Elasticsearch:
+    # Crea un cliente de Elasticsearch, usando autenticación básica si se proporcionan las credenciales.
     if ELASTICSEARCH_USER and ELASTICSEARCH_PASSWORD:
         return Elasticsearch(
             ELASTICSEARCH_URL,
@@ -37,11 +38,10 @@ def get_es_client() -> Elasticsearch:
         request_timeout=60,
     )
 
-
 es = get_es_client()
 
-
 def check_elasticsearch_connection() -> dict[str, Any]:
+    # Verifica la conexión a Elasticsearch y devuelve información básica del cluster.
     info = es.info()
 
     return {
@@ -50,8 +50,8 @@ def check_elasticsearch_connection() -> dict[str, Any]:
         "version": info.get("version", {}).get("number"),
     }
 
-
 def normalize_index_part(text: str) -> str:
+    # Normaliza un texto para usarlo como parte de un nombre de índice en Elasticsearch, eliminando acentos, caracteres especiales y espacios.
     text = text.lower().strip()
 
     text = unicodedata.normalize("NFD", text)
@@ -67,11 +67,14 @@ def normalize_index_part(text: str) -> str:
 
 
 def topic_to_index_name(tema: str) -> str:
+    # Convierte un tema a un nombre de índice seguro para Elasticsearch, asegurándose de que solo contenga caracteres válidos y esté en minúsculas.
     safe_tema = normalize_index_part(tema)
     return f"rag_{safe_tema}"
 
 
 def create_index_if_not_exists(index_name: str):
+    # Crea un índice en Elasticsearch con la configuración y mapeo necesarios si no existe ya.
+
     if es.indices.exists(index=index_name):
         return
 
@@ -130,6 +133,7 @@ def create_index_if_not_exists(index_name: str):
 
 
 def create_chunk_summary(chunk: str, max_chars: int = 300) -> str:
+    # Crea un resumen simple de un chunk de texto, truncándolo a un número máximo de caracteres sin cortar palabras por la mitad.
     chunk = " ".join(chunk.split())
 
     if len(chunk) <= max_chars:
@@ -139,9 +143,8 @@ def create_chunk_summary(chunk: str, max_chars: int = 300) -> str:
 
 
 def find_document_by_hash(file_hash: str) -> dict | None:
-    """
-    Busca si ya existe un documento con el mismo hash en cualquier índice rag_*.
-    """
+
+    # Busca en Elasticsearch un documento que tenga el mismo hash de archivo, lo que indica que ya ha sido ingestado previamente, y devuelve su información básica si se encuentra.
     try:
         response = es.search(
             index="rag_*",
@@ -172,6 +175,7 @@ def find_document_by_hash(file_hash: str) -> dict | None:
 
     except Exception:
         return None
+        
 def store_chunks(
     chunks: list[str],
     tema: str,
@@ -183,6 +187,9 @@ def store_chunks(
     file_hash: str | None = None,
     file_size: int | None = None,
 ) -> dict[str, Any]:
+    '''
+    Almacena los chunks de un documento en Elasticsearch, generando embeddings para cada chunk y guardando metadatos relevantes. Crea el índice correspondiente al tema si no existe.
+    '''
     index_name = topic_to_index_name(tema)
     create_index_if_not_exists(index_name)
 

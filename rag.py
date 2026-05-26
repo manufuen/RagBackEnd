@@ -1,10 +1,11 @@
-from typing import Any
+from typing import Any 
 
-from search import hybrid_search
+from search import hybrid_search 
 from llm_wrapper import CustomLLMWrapper
 
 
 def build_context(results: list[dict[str, Any]]) -> str:
+    # Construye un contexto concatenando los fragmentos de texto de los resultados de búsqueda, incluyendo metadatos para que el LLM pueda citar las fuentes.
     context_parts = []
 
     for result in results:
@@ -20,30 +21,31 @@ def build_context(results: list[dict[str, Any]]) -> str:
 
 
 def generate_answer_with_custom_llm(question: str, context: str) -> str:
+    # Genera una respuesta a la pregunta dada usando un LLM personalizado, proporcionando el contexto relevante. Si el LLM no está configurado correctamente, devuelve una cadena vacía.
     llm = CustomLLMWrapper()
 
     if not llm.is_configured():
         return ""
 
     system_prompt = """
-Eres un asistente RAG.
-Debes responder SOLO usando el contexto proporcionado.
-Si la respuesta no aparece claramente en el contexto, responde:
-"No hay información en los documentos ingestados."
+    Eres un asistente RAG.
+    Debes responder SOLO usando el contexto proporcionado.
+    Si la respuesta no aparece claramente en el contexto, responde:
+    "No hay información en los documentos ingestados."
 
-No inventes información.
-Cita el documento usado cuando sea posible.
-"""
+    No inventes información.
+    Cita el documento usado cuando sea posible.
+    """
 
     user_prompt = f"""
-Pregunta:
-{question}
+    Pregunta:
+    {question}
 
-Contexto:
-{context}
+    Contexto:
+    {context}
 
-Respuesta:
-"""
+    Respuesta:
+    """
 
     messages = [
         {
@@ -63,6 +65,7 @@ Respuesta:
 
 
 def generate_fallback_answer(results: list[dict[str, Any]]) -> str:
+    # Genera una respuesta de fallback cuando el LLM no está configurado correctamente, mostrando los fragmentos de texto más relevantes.
     if not results:
         return "No hay información en los documentos ingestados."
 
@@ -92,6 +95,7 @@ def generate_fallback_answer(results: list[dict[str, Any]]) -> str:
 
 
 def answer_question(question: str) -> dict[str, Any]:
+    # Función principal para responder a una pregunta del usuario. Realiza una búsqueda híbrida en los documentos ingestados, construye un contexto con los resultados, intenta generar una respuesta usando el LLM personalizado, y si no es posible, genera una respuesta de fallback mostrando los fragmentos más relevantes.
     search_response = hybrid_search(question)
 
     if not search_response["found"]:

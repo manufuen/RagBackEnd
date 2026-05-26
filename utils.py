@@ -1,11 +1,14 @@
-import os
-import re
-from pathlib import Path
+import os # Para manejar variables de entorno
+import re # Para procesar texto y extraer keywords
+from pathlib import Path # Para manejar rutas de archivos de forma más cómoda
 
-import docx
+import docx 
 from pypdf import PdfReader
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer # Para extracción de keywords
 
+''' 
+Utilidades para extracción de texto, autor y keywords de los documentos.
+'''
 
 SPANISH_STOPWORDS = [
     "de", "la", "que", "el", "en", "y", "a", "los", "del", "se",
@@ -19,8 +22,8 @@ SPANISH_STOPWORDS = [
     "otro", "otras", "otra", "él", "tanto", "esa", "estos", "mucho",
 ]
 
-
 def extract_text(file_path: str) -> str:
+    # Función para llamar la extracción de texto de un documento PDF, DOCX y TXT.
     ext = os.path.splitext(file_path)[1].lower()
 
     if ext == ".pdf":
@@ -34,7 +37,6 @@ def extract_text(file_path: str) -> str:
 
     raise ValueError(f"Formato no soportado: {ext}")
 
-
 def extract_text_from_pdf(file_path: str) -> str:
     reader = PdfReader(file_path)
 
@@ -47,7 +49,6 @@ def extract_text_from_pdf(file_path: str) -> str:
 
     return "\n".join(pages_text)
 
-
 def extract_text_from_docx(file_path: str) -> str:
     document = docx.Document(file_path)
 
@@ -59,13 +60,11 @@ def extract_text_from_docx(file_path: str) -> str:
 
     return "\n".join(paragraphs)
 
-
 def extract_text_from_txt(file_path: str) -> str:
     return Path(file_path).read_text(
         encoding="utf-8",
         errors="ignore"
     )
-
 
 def extract_author(file_path: str) -> str | None:
     ext = os.path.splitext(file_path)[1].lower()
@@ -90,15 +89,16 @@ def extract_author(file_path: str) -> str | None:
 
     return None
 
-
 def clean_text_for_keywords(text: str) -> str:
+    # Limpia el texto para la extracción de keywords:
     text = text.lower()
     text = re.sub(r"[^a-záéíóúüñ0-9\s]", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
-
 def extract_keywords(text: str, max_keywords: int = 8) -> list[str]:
+    # Función para extraer keywords del texto usando CountVectorizer de sklearn.
+
     cleaned_text = clean_text_for_keywords(text)
 
     if not cleaned_text:

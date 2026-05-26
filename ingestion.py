@@ -1,13 +1,12 @@
-import uuid
-import hashlib
-from pathlib import Path
-from datetime import datetime, timezone
-
-from fastapi import UploadFile
+import uuid # Para generar identificadores únicos para cada documento
+import hashlib # Para calcular el hash de los archivos y evitar duplicados
+from pathlib import Path # Para manejar rutas de archivos de forma más cómoda
+from datetime import datetime, timezone # Para manejar fechas y horas con zona horaria
+from fastapi import UploadFile # Para manejar archivos subidos a través de la API
 
 from classification import classify_document
-from chunking import chunk_text
-from vector_store import store_chunks, find_document_by_hash
+from chunking import chunk_text 
+from vector_store import store_chunks, find_document_by_hash 
 from utils import extract_text, extract_author, extract_keywords
 
 # Configuración de directorios para almacenamiento temporal de archivos subidos

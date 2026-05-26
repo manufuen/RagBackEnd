@@ -1,3 +1,6 @@
+'''
+RAG Chat Backend - app.py
+'''
 from pathlib import Path
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, HTTPException
@@ -10,10 +13,13 @@ from vector_store import check_elasticsearch_connection, es
 
 app = FastAPI(title="RAG Chat Backend", version="0.2")
 
+# Configuración de directorios para almacenamiento temporal de archivos subidos
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 
-
+'''
+funciones internas del backend
+'''
 def get_existing_rag_indices() -> list[str]:
     """
     Devuelve todos los índices RAG existentes en Elasticsearch.
@@ -60,6 +66,14 @@ def delete_all_uploaded_files() -> list[str]:
 
     return deleted_files
 
+''' 
+Configuración CORS para permitir solicitudes desde el frontend
+En tu proyecto tienes dos servicios separados:
+Frontend Streamlit → http://localhost:8501
+Backend FastAPI    → http://localhost:8000
+Como son puertos distintos, el navegador los considera orígenes diferentes. Sin CORS, algunas peticiones del frontend al backend podrían bloquearse.
+
+'''
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -68,12 +82,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+'''
+Modelo de datos que espera recibir el endpoint /chat
+'''
 class ChatRequest(BaseModel):
     question: str
 
-
+''' 
+Endpoints 
+'''
 @app.get("/")
+# Endpoint raíz para verificar que el backend está funcionando
 def root():
     return {
         "status": "ok",
@@ -82,6 +101,7 @@ def root():
 
 
 @app.get("/health/elasticsearch")
+# Endpoint para verificar la conexión con Elasticsearch
 def elasticsearch_health():
     try:
         return check_elasticsearch_connection()
@@ -92,7 +112,9 @@ def elasticsearch_health():
         )
 
 
+
 @app.get("/indices")
+# Endpoint para listar los índices RAG existentes en Elasticsearch
 def list_indices():
     try:
         indices = es.indices.get_alias(index="rag_*")
@@ -108,6 +130,7 @@ def list_indices():
 
 
 @app.post("/upload")
+# Endpoint para subir un documento y procesarlo (clasificación, chunking, vectorización, almacenamiento)
 async def upload_document(file: UploadFile = File(...)):
     try:
         result = await process_document(file)
@@ -132,6 +155,7 @@ async def upload_document(file: UploadFile = File(...)):
 
 
 @app.post("/chat")
+# Endpoint para recibir una pregunta del frontend, procesarla y devolver una respuesta generada por el sistema RAG
 def chat(request: ChatRequest):
     try:
         result = answer_question(request.question)
@@ -143,12 +167,8 @@ def chat(request: ChatRequest):
         )
     
 @app.delete("/indices/{index_name}")
+# Endpoint para eliminar un índice RAG concreto de Elasticsearch
 def delete_index(index_name: str):
-    """
-    Elimina un índice RAG completo de Elasticsearch.
-    Ejemplo:
-    DELETE /indices/rag_musica
-    """
 
     if not index_name.startswith("rag_"):
         raise HTTPException(
@@ -181,12 +201,8 @@ def delete_index(index_name: str):
         )
     
 @app.delete("/indices")
+# Endpoint para eliminar todos los índices RAG existentes de Elasticsearch
 def delete_all_rag_indices():
-    """
-    Elimina todos los índices RAG existentes en Elasticsearch.
-    Ejemplo:
-    DELETE /indices
-    """
 
     try:
         try:
@@ -220,11 +236,10 @@ def delete_all_rag_indices():
             status_code=500,
             detail=f"No se pudieron eliminar todos los índices RAG: {str(e)}"
         )    
+    
 @app.get("/documents")
+# Endpoint para listar los documentos ingestados agrupando chunks por documento_id
 def list_documents():
-    """
-    Lista los documentos ingestados agrupando chunks por documento_id.
-    """
 
     indices = get_existing_rag_indices()
 
@@ -311,14 +326,10 @@ def list_documents():
             status_code=500,
             detail=f"Error consultando documentos: {str(e)}"
         )  
+
 @app.delete("/documents/{document_id}")
+# Endpoint para eliminar un documento concreto (todos sus chunks en Elasticsearch + archivo físico asociado en backend/uploads/)
 def delete_document(document_id: str):
-    """
-    Elimina un documento concreto:
-    - Borra todos sus chunks en Elasticsearch.
-    - Borra el archivo físico asociado en backend/uploads/.
-    - Si un índice queda vacío, lo elimina.
-    """
 
     indices = get_existing_rag_indices()
 
@@ -396,13 +407,10 @@ def delete_document(document_id: str):
             status_code=500,
             detail=f"No se pudo eliminar el documento '{document_id}': {str(e)}"
         )   
+
 @app.delete("/documents")
+# Endpoint para eliminar todos los documentos ingestados
 def delete_all_documents():
-    """
-    Elimina todos los documentos ingestados:
-    - Borra todos los índices rag_* de Elasticsearch.
-    - Borra los archivos físicos de backend/uploads/.
-    """
 
     indices = get_existing_rag_indices()
 

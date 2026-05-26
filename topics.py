@@ -1,3 +1,5 @@
+''' Catálogo de temas '''
+
 UNKNOWN_TOPIC = "desconocida"
 
 TOPIC_CATALOG = {

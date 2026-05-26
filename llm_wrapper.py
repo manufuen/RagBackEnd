@@ -1,14 +1,15 @@
-import os
-from typing import Any
+import os # Para manejar variables de entorno
+from typing import Any # Para anotaciones de tipado
 
-import httpx
-from dotenv import load_dotenv
+import httpx 
+from dotenv import load_dotenv 
 
-
-load_dotenv()
-
+load_dotenv() # Carga las variables de entorno desde un archivo .env
 
 class CustomLLMWrapper:
+    ''' 
+    Wrapper para llamar a un LLM personalizado compatible con OpenAI API.
+    '''
     def __init__(self):
         self.api_key = os.getenv("CUSTOM_LLM_API_KEY")
         self.base_url = os.getenv("CUSTOM_LLM_BASE_URL")
@@ -21,7 +22,8 @@ class CustomLLMWrapper:
             "openai-compatible",
         )
 
-        if self.base_url:
+        # Asegura que la base_url no termine con "/" para evitar problemas al construir la URL de la API.
+        if self.base_url: 
             self.base_url = self.base_url.rstrip("/")
 
     def is_configured(self) -> bool:
@@ -33,7 +35,9 @@ class CustomLLMWrapper:
             and self.header_origin
         )
 
+    # Construye los headers personalizados para la autenticación y metadatos de la petición al LLM.
     def _build_headers(self) -> dict[str, str]:
+        # Aparece como error porque httpx no acepta headers con valores None, pero nosotros nos aseguramos de que no sean None con is_configured() antes de llamar a esta función.
         return {
             "provider": self.header_provider,
             "origin": self.header_origin,
@@ -42,6 +46,7 @@ class CustomLLMWrapper:
             "Content-Type": "application/json",
         }
 
+    # Función principal para enviar mensajes al LLM y obtener la respuesta.
     def chat(
         self,
         messages: list[dict[str, str]],

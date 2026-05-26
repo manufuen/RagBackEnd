@@ -1,8 +1,7 @@
-import os
-from typing import Any
+import os # Para manejar variables de entorno
+from typing import Any # Para anotaciones de tipado
 from topic_router import route_question_to_existing_topic, UNKNOWN_TOPIC, topic_to_index
 
-from classification import classify_question
 from vector_store import es, model, topic_to_index_name
 
 
@@ -10,6 +9,7 @@ MIN_RELEVANCE_SCORE = float(os.getenv("MIN_RELEVANCE_SCORE", "0.50"))
 
 
 def normalize_bm25_score(score: float, max_score: float) -> float:
+    # Normaliza el score BM25 dividiéndolo por el score máximo obtenido en la búsqueda, para escalarlo entre 0 y 1. Si el score máximo es 0 o negativo, devuelve 0 para evitar divisiones por cero o resultados negativos.
     if not max_score or max_score <= 0:
         return 0.0
 
@@ -17,17 +17,12 @@ def normalize_bm25_score(score: float, max_score: float) -> float:
 
 
 def normalize_vector_score(score: float) -> float:
-    """
-    Elasticsearch devuelve:
-    cosineSimilarity(...) + 1.0
-
-    Eso deja el score entre 0 y 2 aproximadamente.
-    Lo normalizamos a 0-1.
-    """
+    # Normaliza el score de similitud vectorial, que suele estar entre -1 y 1, escalándolo a un rango de 0 a 1. Si el score es menor que -1, devuelve 0; si es mayor que 1, devuelve 1; de lo contrario, lo escala linealmente
     return max(0.0, min(score / 2.0, 1.0))
 
 
 def build_result_key(hit: dict[str, Any]) -> str:
+    # Construye una clave única para un resultado de búsqueda combinando el ID del documento y el ID del chunk. Si por alguna razón no se pueden obtener estos IDs, utiliza el ID del hit de Elasticsearch como fallback. hit = un resultado encontrado por Elasticsearch, como ejemplo, hit["_id"] es el identificador interno que Elasticsearch le da a ese resultado/documento.
     source = hit.get("_source", {})
     documento_id = source.get("documento_id", "")
     chunk_id = source.get("chunk_id", "")
@@ -39,6 +34,7 @@ def build_result_key(hit: dict[str, Any]) -> str:
 
 
 def get_rag_indices() -> list[str]:
+    # Devuelve una lista de los índices RAG que existen actualmente en Elasticsearch, filtrando solo aquellos que comienzan con "rag_".
     try:
         indices = es.indices.get_alias(index="rag_*")
         return list(indices.keys())
@@ -47,6 +43,8 @@ def get_rag_indices() -> list[str]:
 
 
 def extract_core_query_terms(question: str) -> str:
+    # Extrae las palabras clave principales de la pregunta del usuario eliminando stopwords comunes y palabras muy cortas, para construir una consulta más enfocada para la búsqueda en Elasticsearch.
+
     stopwords = {
         "que", "qué", "es", "son", "un", "una", "unos", "unas",
         "el", "la", "los", "las", "de", "del", "en", "sobre",
@@ -65,6 +63,8 @@ def extract_core_query_terms(question: str) -> str:
 
 
 def build_text_query(question: str, document_id: str | None = None) -> dict[str, Any]:
+    # Construye una consulta de texto para Elasticsearch que combina varias estrategias de búsqueda, incluyendo coincidencia de frase, coincidencia de términos y búsqueda en campos específicos, y si se proporciona un document_id, filtra los resultados para ese documento específico.
+
     core_query = extract_core_query_terms(question)
 
     should_queries = [
@@ -155,6 +155,7 @@ def build_text_query(question: str, document_id: str | None = None) -> dict[str,
 
 
 def build_vector_filter_query(document_id: str | None = None) -> dict[str, Any]:
+    # Construye una consulta de filtro para la búsqueda vectorial en Elasticsearch, que si se proporciona un document_id, limita los resultados a ese documento específico. Si no se proporciona un document_id, devuelve una consulta que coincide con todos los documentos.
     if not document_id:
         return {
             "match_all": {}
@@ -173,6 +174,7 @@ def bm25_search(
     top_k: int = 20,
     document_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    # Realiza una búsqueda BM25 en Elasticsearch usando la consulta de texto construida, y devuelve los hits encontrados. Si se proporciona un document_id, la búsqueda se limita a ese documento específico.
     body = {
         "size": top_k,
         "query": build_text_query(
@@ -191,6 +193,7 @@ def vector_search(
     top_k: int = 20,
     document_id: str | None = None,
 ) -> list[dict[str, Any]]:
+    # Realiza una búsqueda vectorial en Elasticsearch calculando el embedding de la pregunta usando el modelo de sentence-transformers, y devuelve los hits encontrados ordenados por similitud. Si se proporciona un document_id, la búsqueda se limita a ese documento específico.
     query_vector = model.encode(
         question,
         normalize_embeddings=True,
@@ -222,6 +225,7 @@ def combine_hits(
     vector_weight: float = 0.65,
     bm25_weight: float = 0.35,
 ) -> list[dict[str, Any]]:
+    # Combina los hits de las búsquedas BM25 y vectorial, normalizando sus scores y aplicando pesos para obtener un score combinado. Devuelve una lista de resultados ordenados por el score combinado en orden descendente.
     max_bm25 = max(
         [hit.get("_score", 0.0) for hit in bm25_hits],
         default=0.0,
@@ -277,7 +281,10 @@ def combine_hits(
     results.sort(key=lambda item: item["score"], reverse=True)
 
     return results
+
+
 def is_definition_question(question: str) -> bool:
+    # Determina si la pregunta del usuario parece ser una solicitud de definición o explicación de un concepto, buscando patrones comunes en la pregunta. 
     question = question.lower().strip()
 
     definition_patterns = [
@@ -296,6 +303,7 @@ def is_definition_question(question: str) -> bool:
 
 
 def hit_to_result(hit: dict[str, Any]) -> dict[str, Any]:
+    # Convierte un hit de Elasticsearch en un formato de resultado más amigable. 
     source = hit.get("_source", {})
 
     return {
@@ -321,6 +329,7 @@ def get_intro_chunks(
     document_id: str,
     size: int = 3,
 ) -> list[dict[str, Any]]:
+    # Obtiene los primeros chunks de un documento específico, que suelen contener la introducción o definición del tema, para darles prioridad en preguntas de definición. 
     body = {
         "size": size,
         "query": {
@@ -348,6 +357,7 @@ def merge_results_without_duplicates(
     normal_results: list[dict[str, Any]],
     top_k: int,
 ) -> list[dict[str, Any]]:
+    # Combina dos listas de resultados, dando prioridad a la primera lista (priority_results) y asegurándose de no incluir resultados duplicados basados en el documento_id y chunk_id. Devuelve una lista combinada ordenada por prioridad y limitada a top_k resultados.
     merged = []
     seen = set()
 
@@ -434,11 +444,7 @@ UNKNOWN_TOPIC = "desconocida"
 
 
 def get_existing_rag_indices() -> list[str]:
-    """
-    Devuelve solo los índices RAG que existen actualmente en Elasticsearch.
-    Ejemplo:
-    ["rag_biologia", "rag_quimica", "rag_astronomia_universo"]
-    """
+    # Devuelve una lista de los índices RAG que existen actualmente en Elasticsearch, filtrando solo aquellos que comienzan con "rag_".
     try:
         indices = es.indices.get_alias(index="rag_*")
         return list(indices.keys())
@@ -447,10 +453,7 @@ def get_existing_rag_indices() -> list[str]:
 
 
 def resolve_search_index_from_question(question: str) -> tuple[str, str | None, bool, str]:
-    """
-    Usa el LLM para elegir la temática más adecuada entre los índices ya ingestados.
-    Si ninguna temática encaja, devuelve desconocida.
-    """
+    # Decide en qué temática buscar usando SOLO los índices ya existentes. Devuelve una tupla con la temática seleccionada, el nombre del índice correspondiente, un booleano indicando si se puede realizar la búsqueda, y una razón explicativa.
 
     existing_indices = get_existing_rag_indices()
 
@@ -506,6 +509,9 @@ def hybrid_search(
     vector_weight: float = 0.55,
     bm25_weight: float = 0.45,
 ) -> dict[str, Any]:
+    '''
+    Realiza una búsqueda híbrida en los documentos ingestados, combinando BM25 y búsqueda vectorial. Primero resuelve en qué índice temático buscar usando solo los índices existentes, luego selecciona el documento más relevante dentro de ese índice, y finalmente realiza búsquedas BM25 y vectorial dentro de ese documento para obtener los fragmentos más relevantes. Devuelve un diccionario con la temática, el nombre del índice, el documento seleccionado, los resultados encontrados, y una explicación de la razón detrás de la selección del índice y los resultados.
+    '''
     
     tema, index_name, can_search, reason = resolve_search_index_from_question(question)
 
