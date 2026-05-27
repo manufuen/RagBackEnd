@@ -303,7 +303,7 @@ def is_definition_question(question: str) -> bool:
 
 
 def hit_to_result(hit: dict[str, Any]) -> dict[str, Any]:
-    # Convierte un hit de Elasticsearch en un formato de resultado más amigable. 
+    # Convierte un hit de Elasticsearch en un formato de resultado más amigable.  
     source = hit.get("_source", {})
 
     return {

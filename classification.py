@@ -131,3 +131,10 @@ Recuerda:
     except Exception:
         return UNKNOWN_TOPIC
 
+def classify_question(question: str) -> str:
+    """
+    Ya no es la ruta principal para preguntas.
+    Las preguntas se enrutan mejor con topic_router.py usando índices existentes.
+    Se deja por compatibilidad.
+    """
+    return UNKNOWN_TOPIC

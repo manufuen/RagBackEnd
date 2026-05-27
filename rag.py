@@ -28,24 +28,24 @@ def generate_answer_with_custom_llm(question: str, context: str) -> str:
         return ""
 
     system_prompt = """
-    Eres un asistente RAG.
-    Debes responder SOLO usando el contexto proporcionado.
-    Si la respuesta no aparece claramente en el contexto, responde:
-    "No hay información en los documentos ingestados."
+Eres un asistente RAG.
+Debes responder SOLO usando el contexto proporcionado.
+Si la respuesta no aparece claramente en el contexto, responde:
+"No hay información en los documentos ingestados."
 
-    No inventes información.
-    Cita el documento usado cuando sea posible.
-    """
+No inventes información.
+Cita el documento usado cuando sea posible.
+"""
 
     user_prompt = f"""
-    Pregunta:
-    {question}
+Pregunta:
+{question}
 
-    Contexto:
-    {context}
+Contexto:
+{context}
 
-    Respuesta:
-    """
+Respuesta:
+"""
 
     messages = [
         {
