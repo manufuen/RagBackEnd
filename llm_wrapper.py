@@ -36,7 +36,7 @@ class CustomLLMWrapper:
         )
 
     # Construye los headers personalizados para la autenticación y metadatos de la petición al LLM.
-    def _build_headers(self) -> dict[str, str]:
+    def _build_headers(self) -> dict[str, Any]:
         # Aparece como error porque httpx no acepta headers con valores None, pero nosotros nos aseguramos de que no sean None con is_configured() antes de llamar a esta función.
         return {
             "provider": self.header_provider,
