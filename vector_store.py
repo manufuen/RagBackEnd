@@ -177,6 +177,7 @@ def find_document_by_hash(file_hash: str) -> dict | None:
         return None
         
 def store_chunks(
+        
     chunks: list[str],
     tema: str,
     filename: str,
@@ -232,3 +233,21 @@ def store_chunks(
         "index_name": index_name,
         "chunks_indexed": len(chunks),
     }
+
+def get_existing_topics() -> list[str]:
+    """
+    Devuelve las temáticas ya existentes en Elasticsearch
+    a partir de los índices rag_*.
+    """
+    try:
+        indices = es.indices.get_alias(index="rag_*")
+        topics = []
+
+        for index_name in indices.keys():
+            if index_name.startswith("rag_"):
+                topics.append(index_name.replace("rag_", "", 1))
+
+        return topics
+
+    except Exception:
+        return []

@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from ingestion import process_document
 from rag import answer_question
@@ -66,6 +67,21 @@ def delete_all_uploaded_files() -> list[str]:
 
     return deleted_files
 
+def find_uploaded_file_for_document(document_id: str) -> Path | None:
+    """
+    Busca el archivo físico asociado a un documento.
+    Se asume que los archivos se guardan como:
+    backend/uploads/<document_id>_<nombre_original>
+    """
+    if not UPLOAD_DIR.exists():
+        return None
+
+    matches = list(UPLOAD_DIR.glob(f"{document_id}_*"))
+
+    if not matches:
+        return None
+
+    return matches[0]
 ''' 
 Configuración CORS para permitir solicitudes desde el frontend
 En tu proyecto tienes dos servicios separados:
@@ -111,7 +127,31 @@ def elasticsearch_health():
             detail=f"No se pudo conectar con Elasticsearch: {str(e)}"
         )
 
+@app.get("/documents/{document_id}/file")
+def get_document_file(document_id: str):
+    """
+    Devuelve el archivo físico asociado a un documento ingestados.
+    Permite abrirlo desde el frontend.
+    """
 
+    file_path = find_uploaded_file_for_document(document_id)
+
+    if not file_path or not file_path.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"No se encontró el archivo físico para el documento '{document_id}'."
+        )
+
+    original_filename = file_path.name
+
+    if "_" in original_filename:
+        original_filename = original_filename.split("_", 1)[1]
+
+    return FileResponse(
+        path=file_path,
+        filename=original_filename,
+        media_type="application/octet-stream",
+    )
 
 @app.get("/indices")
 # Endpoint para listar los índices RAG existentes en Elasticsearch

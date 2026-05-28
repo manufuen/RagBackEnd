@@ -6,7 +6,7 @@ from fastapi import UploadFile # Para manejar archivos subidos a través de la A
 
 from classification import classify_document
 from chunking import chunk_text 
-from vector_store import store_chunks, find_document_by_hash 
+from vector_store import store_chunks, find_document_by_hash, get_existing_topics
 from utils import extract_text, extract_author, extract_keywords
 
 # Configuración de directorios para almacenamiento temporal de archivos subidos
@@ -21,12 +21,12 @@ async def process_document(file: UploadFile):
     """
     Proceso principal para ingestar un documento:
     """
-    document_id = str(uuid.uuid4())
+    document_id = str(uuid.uuid4()) # Genera un ID único para el documento
 
     original_filename = file.filename or "documento_sin_nombre"
     file_path = UPLOAD_DIR / f"{document_id}_{original_filename}"
 
-    content = await file.read()
+    content = await file.read() # Lee el contenido del archivo como bytes para calcular el hash y almacenarlo temporalmente
     file_hash = calculate_file_hash(content)
     file_size = len(content)
 
@@ -54,7 +54,12 @@ async def process_document(file: UploadFile):
     if not text or not text.strip():
         raise ValueError("No se pudo extraer texto del documento.")
 
-    tema = classify_document(text, original_filename)
+    existing_topics = get_existing_topics()
+    tema = classify_document(
+    text=text,
+    filename=original_filename,
+    existing_topics=existing_topics,
+)
     chunks = chunk_text(text)
 
     if not chunks:

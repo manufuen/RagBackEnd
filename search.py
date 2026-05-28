@@ -1,8 +1,13 @@
-import os # Para manejar variables de entorno
-from typing import Any # Para anotaciones de tipado
-from topic_router import route_question_to_existing_topic, UNKNOWN_TOPIC, topic_to_index
+import os
+from typing import Any
 
-from vector_store import es, model, topic_to_index_name
+from topic_router import (
+    UNKNOWN_TOPIC,
+    route_question_to_existing_topic,
+    topic_to_index,
+)
+
+from vector_store import es, model
 
 
 MIN_RELEVANCE_SCORE = float(os.getenv("MIN_RELEVANCE_SCORE", "0.50"))
@@ -32,14 +37,6 @@ def build_result_key(hit: dict[str, Any]) -> str:
 
     return hit["_id"]
 
-
-def get_rag_indices() -> list[str]:
-    # Devuelve una lista de los índices RAG que existen actualmente en Elasticsearch, filtrando solo aquellos que comienzan con "rag_".
-    try:
-        indices = es.indices.get_alias(index="rag_*")
-        return list(indices.keys())
-    except Exception:
-        return []
 
 
 def extract_core_query_terms(question: str) -> str:
@@ -439,8 +436,6 @@ def select_best_document(index_name: str, question: str) -> dict[str, Any] | Non
 
     return ranked_documents[0]
 
-
-UNKNOWN_TOPIC = "desconocida"
 
 
 def get_existing_rag_indices() -> list[str]:
